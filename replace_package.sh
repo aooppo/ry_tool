@@ -36,16 +36,22 @@ fi
 echo "请输入日志存放路径 (例如：/path/to/logs):"
 read log_path
 
-if [ -z "$log_path" ]; then
+if [ -z "$log_path" ];then
     echo "日志存放路径不能为空。"
     exit 1
 fi
 # ========== 输入结束 ==========
 
+# ========== 初始化日志 ==========
+log_file="$log_path/rename_script_$(date +%Y%m%d_%H%M%S).log"
+echo "脚本运行日志将存储在: $log_file"
+
 # 将包名转换为路径格式（例如：com.ruoyi -> com/ruoyi）
 old_package_path=$(echo "$old_package" | tr '.' '/')
 new_package_path=$(echo "$new_package" | tr '.' '/')
 
+# 开始替换日志
+{
 echo "开始替换包名：$old_package -> $new_package"
 echo "开始替换包名目录结构：$old_package_path -> $new_package_path"
 echo "项目根目录: $project_root"
@@ -116,7 +122,20 @@ find "$project_root" -type f -name "*$old_module_prefix*" | while read file; do
     mv "$file" "$new_file"
 done
 
-# 6. 替换pom.xml等文件中的模块依赖
+# 6. 替换路径别名相关的引用
+echo "开始替换路径别名中的模块引用..."
+find "$project_root" -type f \( -name "*.js" -o -name "*.vue" -o -name "*.scss" \) | while read file; do
+    echo "处理文件: $file"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s#@/utils/${old_module_prefix}#@/utils/${new_module_prefix}#g" "$file"
+        sed -i '' "s#@/assets/styles/${old_module_prefix}.scss#@/assets/styles/${new_module_prefix}.scss#g" "$file"
+    else
+        sed -i "s#@/utils/${old_module_prefix}#@/utils/${new_module_prefix}#g" "$file"
+        sed -i "s#@/assets/styles/${old_module_prefix}.scss#@/assets/styles/${new_module_prefix}.scss#g" "$file"
+    fi
+done
+
+# 7. 替换pom.xml等文件中的模块依赖
 echo "开始替换pom.xml文件中的模块依赖..."
 find "$project_root" -type f -name "pom.xml" | while read file; do
     echo "处理pom文件中的模块依赖: $file"
@@ -127,7 +146,7 @@ find "$project_root" -type f -name "pom.xml" | while read file; do
     fi
 done
 
-# 7. 删除空的com文件夹
+# 8. 删除空的com文件夹
 echo "开始删除空的com文件夹..."
 find "$project_root" -type d -name "com" | while read com_dir; do
     if [ -z "$(ls -A "$com_dir")" ]; then
@@ -137,3 +156,5 @@ find "$project_root" -type d -name "com" | while read com_dir; do
 done
 
 echo "所有替换操作完成！"
+
+} | tee "$log_file"
