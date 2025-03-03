@@ -10,7 +10,7 @@ old_module_prefix="ruoyi"
 
 # ========== 用户输入部分 ==========
 echo "请输入新的包名 (例如：cc.voox):"
-read new_package
+read new_package < /dev/tty
 
 if [ -z "$new_package" ]; then
     echo "新包名不能为空。"
@@ -18,7 +18,7 @@ if [ -z "$new_package" ]; then
 fi
 
 echo "请输入新的模块前缀 (例如：voox):"
-read new_module_prefix
+read new_module_prefix < /dev/tty
 
 if [ -z "$new_module_prefix" ]; then
     echo "新的模块前缀不能为空。"
@@ -26,7 +26,7 @@ if [ -z "$new_module_prefix" ]; then
 fi
 
 echo "请输入项目的根目录路径 (例如：/path/to/your/project):"
-read project_root
+read project_root < /dev/tty
 
 if [ -z "$project_root" ]; then
     echo "项目根目录不能为空。"
@@ -34,9 +34,9 @@ if [ -z "$project_root" ]; then
 fi
 
 echo "请输入日志存放路径 (例如：/path/to/logs):"
-read log_path
+read log_path < /dev/tty
 
-if [ -z "$log_path" ];then
+if [ -z "$log_path" ]; then
     echo "日志存放路径不能为空。"
     exit 1
 fi
