@@ -38,6 +38,10 @@
 - 适用于：**Windows 10** 及以上版本，或支持 PowerShell 的其他 Windows 版本。
 
 ## 使用方法
+1.	远程执行
+```bash
+curl -sL https://raw.githubusercontent.com/aooppo/ry_tool/refs/heads/main/replace_package.sh | bash < /dev/tty
+```
 
 ### Linux/macOS (Shell 脚本)
 
