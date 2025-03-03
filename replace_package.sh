@@ -155,6 +155,22 @@ find "$project_root" -type d -name "com" | while read com_dir; do
     fi
 done
 
+# 9. 替换 index.js 中的 import 语句
+echo "开始替换 $new_module_prefix-ui/src/utils/index.js 中的 import 语句..."
+index_js_file="$project_root/$new_module_prefix-ui/src/utils/index.js"
+
+if [ -f "$index_js_file" ]; then
+    echo "处理文件: $index_js_file"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s#import { parseTime } from './$old_module_prefix'#import { parseTime } from './$new_module_prefix'#g" "$index_js_file"
+    else
+        sed -i "s#import { parseTime } from './$old_module_prefix'#import { parseTime } from './$new_module_prefix'#g" "$index_js_file"
+    fi
+    echo "✅ 替换完成: import { parseTime } from './$new_module_prefix'"
+else
+    echo "⚠️ 警告: 找不到 $index_js_file，跳过此步骤。"
+fi
+
 echo "所有替换操作完成！"
 
 } | tee "$log_file"

@@ -1,124 +1,166 @@
-@echo off
-setlocal enabledelayedexpansion
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 
-rem ========== 固定配置部分 ==========
-set old_package=com.ruoyi
-set old_module_prefix=ruoyi
-rem ========== 固定配置结束 ==========
+# ========== 固定配置部分 ==========
+old_package="com.ruoyi"
+old_module_prefix="ruoyi"
+# ========== 固定配置结束 ==========
 
-rem ========== 用户输入部分 ==========
-set /p new_package="请输入新的包名 (例如：cc.voox): "
-if "%new_package%"=="" (
-    echo 新包名不能为空。
-    exit /b 1
-)
+# ========== 用户输入部分 ==========
+read -rp "请输入新的包名 (例如：cc.voox): " new_package
+if [[ -z "$new_package" ]]; then
+    echo "新包名不能为空。"
+    exit 1
+fi
 
-set /p new_module_prefix="请输入新的模块前缀 (例如：voox): "
-if "%new_module_prefix%"=="" (
-    echo 新的模块前缀不能为空。
-    exit /b 1
-)
+read -rp "请输入新的模块前缀 (例如：voox): " new_module_prefix
+if [[ -z "$new_module_prefix" ]]; then
+    echo "新的模块前缀不能为空。"
+    exit 1
+fi
 
-set /p project_root="请输入项目的根目录路径 (例如：C:\path\to\your\project): "
-if "%project_root%"=="" (
-    echo 项目根目录不能为空。
-    exit /b 1
-)
+read -rp "请输入项目的根目录路径 (例如：/path/to/your/project): " project_root
+if [[ -z "$project_root" ]]; then
+    echo "项目根目录不能为空。"
+    exit 1
+fi
 
-set /p log_path="请输入日志存放路径 (例如：C:\path\to\logs): "
-if "%log_path%"=="" (
-    echo 日志存放路径不能为空。
-    exit /b 1
-)
+read -rp "请输入日志存放路径 (例如：/path/to/logs): " log_path
+if [[ -z "$log_path" ]]; then
+    echo "日志存放路径不能为空。"
+    exit 1
+fi
+# ========== 用户输入结束 ==========
 
-rem ========== 初始化日志 ==========
-set log_file=%log_path%\rename_script_%date:~0,4%-%date:~5,2%-%date:~8,2%_%time:~0,2%-%time:~3,2%.log
-echo 脚本运行日志存储在: %log_file%
+# ========== 初始化日志 ==========
+timestamp=$(date +%Y%m%d_%H%M%S)
+log_file="${log_path}/rename_script_${timestamp}.log"
+echo "脚本运行日志将存储在: $log_file"
 
-rem 将包名转换为路径格式（例如：com.ruoyi -> com\ruoyi）
-set old_package_path=%old_package:.=\%
-set new_package_path=%new_package:.=\%
+# 将包名转换为路径格式（例如：com.ruoyi -> com/ruoyi）
+old_package_path=$(echo "$old_package" | tr '.' '/')
+new_package_path=$(echo "$new_package" | tr '.' '/')
 
-rem 开始操作日志
-(
-    echo 开始替换包名：%old_package% -> %new_package%
-    echo 开始替换包名目录结构：%old_package_path% -> %new_package_path%
-    echo 项目根目录: %project_root%
+{
+  echo "开始替换包名：$old_package -> $new_package"
+  echo "开始替换包名目录结构：$old_package_path -> $new_package_path"
+  echo "项目根目录: $project_root"
 
-    rem 1. 替换包名目录
-    echo 开始替换包名目录...
-    for /f "tokens=*" %%d in ('dir /ad /s /b "%project_root%\*" ^| findstr /i "%old_package_path%"') do (
-        set "new_dir=%%d"
-        set "new_dir=!new_dir:%old_package_path%=%new_package_path%!"
-        echo 重命名目录: %%d -> !new_dir!
-        if not exist "!new_dir!" (
-            mkdir "!new_dir!"
-            move "%%d" "!new_dir!"
-        )
-    )
+  # 1. 替换包名目录
+  echo "开始替换包名目录..."
+  find "$project_root" -type d -path "*$old_package_path*" | while read -r dir; do
+      new_dir=$(echo "$dir" | sed "s#$old_package_path#$new_package_path#g")
+      echo "重命名目录: $dir -> $new_dir"
+      mkdir -p "$(dirname "$new_dir")"
+      mv "$dir" "$new_dir"
+  done
 
-    rem 2. 替换 Java 文件中的包声明
-    echo 开始替换文件中的包声明...
-    for /r "%project_root%" %%f in (*.java) do (
-        echo 处理文件: %%f
-        powershell -Command "(Get-Content -Path '%%f') -replace '%old_package%', '%new_package%' | Set-Content -Path '%%f'"
-    )
+  # 2. 替换Java文件中的包声明 (适用于 macOS 和 Linux)
+  echo "开始替换文件中的包声明..."
+  find "$project_root" -type f -name "*.java" | while read -r file; do
+      echo "处理文件: $file"
+      if [[ "$OSTYPE" == darwin* ]]; then
+          sed -i '' "s/$old_package/$new_package/g" "$file"
+      else
+          sed -i "s/$old_package/$new_package/g" "$file"
+      fi
+  done
 
-    rem 3. 替换 pom.xml、README.md 和其他配置文件中的包名
-    echo 开始替换 pom.xml 文件中的包名...
-    for /r "%project_root%" %%f in (pom.xml README.md) do (
-        echo 处理文件: %%f
-        powershell -Command "(Get-Content -Path '%%f') -replace '%old_package%', '%new_package%' | Set-Content -Path '%%f'"
-    )
+  # 3. 替换 pom.xml 中的包名
+  echo "开始替换 pom.xml 文件中的包名..."
+  find "$project_root" -type f -name "pom.xml" | while read -r file; do
+      echo "处理 pom 文件: $file"
+      if [[ "$OSTYPE" == darwin* ]]; then
+          sed -i '' "s/$old_package/$new_package/g" "$file"
+      else
+          sed -i "s/$old_package/$new_package/g" "$file"
+      fi
+  done
 
-    echo 开始替换其他配置文件中的包名...
-    for /r "%project_root%" %%f in (*.xml *.yml *.properties) do (
-        echo 处理文件: %%f
-        powershell -Command "(Get-Content -Path '%%f') -replace '%old_package%', '%new_package%' | Set-Content -Path '%%f'"
-    )
+  echo "开始替换其他配置文件中的包名 (如 .xml, .yml, .properties)..."
+  find "$project_root" -type f \( -name "*.xml" -o -name "*.yml" -o -name "*.properties" \) | while read -r file; do
+      echo "处理配置文件: $file"
+      if [[ "$OSTYPE" == darwin* ]]; then
+          sed -i '' "s/$old_package/$new_package/g" "$file"
+      else
+          sed -i "s/$old_package/$new_package/g" "$file"
+      fi
+  done
 
-    rem 4. 替换 logback.xml 中的日志路径
-    set logback_file=%project_root%\ruoyi-admin\src\main\resources\logback.xml
-    if exist "%logback_file%" (
-        echo 正在处理 %logback_file% 中的日志路径...
-        powershell -Command "(Get-Content -Path '%logback_file%') -replace '/home/ruoyi/logs', '%log_path%' | Set-Content -Path '%logback_file%'"
-    )
+  # 4. 替换 logback.xml 中的日志路径
+  logback_file="${project_root}/ruoyi-admin/src/main/resources/logback.xml"
+  if [[ -f "$logback_file" ]]; then
+      echo "正在处理 $logback_file 中的日志路径..."
+      if [[ "$OSTYPE" == darwin* ]]; then
+          sed -i '' "s#/home/ruoyi/logs#$log_path#g" "$logback_file"
+      else
+          sed -i "s#/home/ruoyi/logs#$log_path#g" "$logback_file"
+      fi
+  fi
 
-    rem 5. 替换模块名称
-    echo 开始替换模块名称...
-    for /f "tokens=*" %%d in ('dir /ad /s /b "%project_root%\*" ^| findstr /i "%old_module_prefix%"') do (
-        set "new_dir=%%d"
-        set "new_dir=!new_dir:%old_module_prefix%=%new_module_prefix%!"
-        echo 重命名目录: %%d -> !new_dir!
-        if not exist "!new_dir!" (
-            mkdir "!new_dir!"
-            move "%%d" "!new_dir!"
-        )
-    )
+  # 5. 替换模块名称（目录和文件）
+  echo "开始替换模块名称..."
+  find "$project_root" -type d -name "*${old_module_prefix}*" | while read -r dir; do
+      new_dir=$(echo "$dir" | sed "s#$old_module_prefix#$new_module_prefix#g")
+      echo "重命名模块目录: $dir -> $new_dir"
+      mv "$dir" "$new_dir"
+  done
 
-    for /r "%project_root%" %%f in (*%old_module_prefix%*) do (
-        set "new_file=%%f"
-        set "new_file=!new_file:%old_module_prefix%=%new_module_prefix%!"
-        echo 重命名文件: %%f -> !new_file!
-        move "%%f" "!new_file!"
-    )
+  find "$project_root" -type f -name "*${old_module_prefix}*" | while read -r file; do
+      new_file=$(echo "$file" | sed "s#$old_module_prefix#$new_module_prefix#g")
+      echo "重命名模块文件: $file -> $new_file"
+      mv "$file" "$new_file"
+  done
 
-    rem 6. 替换路径别名中的模块引用
-    echo 开始替换路径别名中的模块引用...
-    for /r "%project_root%" %%f in (*.js *.vue *.scss) do (
-        echo 处理文件: %%f
-        powershell -Command "(Get-Content -Path '%%f') -replace '@/utils/%old_module_prefix%', '@/utils/%new_module_prefix%' | Set-Content -Path '%%f'"
-        powershell -Command "(Get-Content -Path '%%f') -replace '@/assets/styles/%old_module_prefix%.scss', '@/assets/styles/%new_module_prefix%.scss' | Set-Content -Path '%%f'"
-    )
+  # 6. 替换路径别名中的模块引用
+  echo "开始替换路径别名中的模块引用..."
+  find "$project_root" -type f \( -name "*.js" -o -name "*.vue" -o -name "*.scss" \) | while read -r file; do
+      echo "处理文件: $file"
+      if [[ "$OSTYPE" == darwin* ]]; then
+          sed -i '' "s#@/utils/${old_module_prefix}#@/utils/${new_module_prefix}#g" "$file"
+          sed -i '' "s#@/assets/styles/${old_module_prefix}.scss#@/assets/styles/${new_module_prefix}.scss#g" "$file"
+      else
+          sed -i "s#@/utils/${old_module_prefix}#@/utils/${new_module_prefix}#g" "$file"
+          sed -i "s#@/assets/styles/${old_module_prefix}.scss#@/assets/styles/${new_module_prefix}.scss#g" "$file"
+      fi
+  done
 
-    rem 7. 删除空的 com 文件夹
-    echo 开始删除空的 com 文件夹...
-    for /d /r "%project_root%" %%d in (com) do (
-        if not exist "%%d\*" (
-            echo 删除空的 com 文件夹: %%d
-            rmdir /s /q "%%d"
-        )
-    )
+  # 7. 替换 pom.xml 中的模块依赖
+  echo "开始替换 pom.xml 文件中的模块依赖..."
+  find "$project_root" -type f -name "pom.xml" | while read -r file; do
+      echo "处理 pom 文件中的模块依赖: $file"
+      if [[ "$OSTYPE" == darwin* ]]; then
+          sed -i '' "s/$old_module_prefix/$new_module_prefix/g" "$file"
+      else
+          sed -i "s/$old_module_prefix/$new_module_prefix/g" "$file"
+      fi
+  done
 
-    echo 所有替换操作完成！
-) > "%log_file%"
+  # 8. 删除空的 com 文件夹
+  echo "开始删除空的 com 文件夹..."
+  find "$project_root" -type d -name "com" | while read -r com_dir; do
+      if [[ -z "$(ls -A "$com_dir")" ]]; then
+          echo "删除空的 com 文件夹: $com_dir"
+          rmdir "$com_dir"
+      fi
+  done
+
+  # 9. 替换 ruoyi-ui/src/utils/index.js 中的 import 语句
+  echo "开始替换 ${new_module_prefix}-ui/src/utils/index.js 中的 import 语句..."
+  index_js_file="${project_root}/${new_module_prefix}-ui/src/utils/index.js"
+  if [[ -f "$index_js_file" ]]; then
+      echo "处理文件: $index_js_file"
+      if [[ "$OSTYPE" == darwin* ]]; then
+          sed -i '' "s#import { parseTime } from './${old_module_prefix}'#import { parseTime } from './${new_module_prefix}'#g" "$index_js_file"
+      else
+          sed -i "s#import { parseTime } from './${old_module_prefix}'#import { parseTime } from './${new_module_prefix}'#g" "$index_js_file"
+      fi
+      echo "✅ 替换完成: import { parseTime } from './${new_module_prefix}'"
+  else
+      echo "⚠️ 警告: 找不到 ${index_js_file}，跳过此步骤。"
+  fi
+
+  echo "所有替换操作完成！"
+
+} | tee "$log_file"
