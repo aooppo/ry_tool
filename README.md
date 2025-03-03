@@ -42,7 +42,11 @@
 ```bash
 curl -sL https://raw.githubusercontent.com/aooppo/ry_tool/refs/heads/main/replace_package.sh | bash < /dev/tty
 ```
+或者
 
+```bash
+curl -sL https://gitee.com/ctj/ry_tool/raw/main/replace_package.sh | bash < /dev/tty
+```
 ### Linux/macOS (Shell 脚本)
 
 1. **克隆 Git 仓库**：
