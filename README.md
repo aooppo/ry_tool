@@ -1,3 +1,5 @@
+
+
 ### `README.md`
 
 本代码为了快速修改若依（若依/RuoYi-Vue）框架内，所有包名及依赖(com.ruoyi)
@@ -51,8 +53,8 @@ curl -sL https://gitee.com/ctj/ry_tool/raw/main/replace_package.sh | bash < /dev
 
 1. **克隆 Git 仓库**：
    ```bash
-   git clone https://github.com/your-repository-url/replace-package.git
-   cd replace-package
+   git clone https://github.com/aooppo/ry_tool.git
+   cd ry_tool
    ```
 
 2. **赋予 Shell 脚本执行权限**：
@@ -75,8 +77,8 @@ curl -sL https://gitee.com/ctj/ry_tool/raw/main/replace_package.sh | bash < /dev
 
 1. **克隆 Git 仓库**：
    ```bash
-   git clone https://github.com/your-repository-url/replace-package.git
-   cd replace-package
+   git clone https://github.com/aooppo/ry_tool.git
+   cd ry_tool
    ```
 
 2. **运行批处理脚本**：
